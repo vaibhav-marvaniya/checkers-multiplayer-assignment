@@ -618,6 +618,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 737107485}
+  - component: {fileID: 737107486}
   m_Layer: 0
   m_Name: GameContoller
   m_TagString: Untagged
@@ -640,6 +641,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &737107486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 737107484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19134cc333c3cab49aa5eb7163051104, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameConfig: {fileID: 11400000, guid: d28c1f028079f624197fe1662d2ee966, type: 2}
+  rows: 6
+  cols: 6
+  _boardView: {fileID: 1183896384}
+  turnText: {fileID: 1811657714}
+  gameOverText: {fileID: 1353555548}
+  scoreText: {fileID: 2074683260}
+  restartButton: {fileID: 568190086}
+  coinsText: {fileID: 791693545}
+  coinsPerWin: 10
 --- !u!1 &791693543
 GameObject:
   m_ObjectHideFlags: 0
