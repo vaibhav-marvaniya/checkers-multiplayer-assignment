@@ -120,7 +120,7 @@ namespace Checkers.Netcode
 
         public override void OnNetworkSpawn()
         {
-            Debug.Log($"[NGC] OnNetworkSpawn on client {NetworkManager.Singleton.LocalClientId}, IsServer={IsServer}, IsOwner={IsOwner}");
+            // Debug.Log($"[NGC] OnNetworkSpawn on client {NetworkManager.Singleton.LocalClientId}, IsServer={IsServer}, IsOwner={IsOwner}");
 
             _isGameStarted = false;
             _isGameOver = false;
@@ -153,7 +153,7 @@ namespace Checkers.Netcode
                     _maxActivePlayers = Mathf.Clamp(defaultMaxPlayers, 2, 4);
                 }
 
-                Debug.Log($"[NGC] Host using maxActivePlayers = {_maxActivePlayers}");
+                // Debug.Log($"[NGC] Host using maxActivePlayers = {_maxActivePlayers}");
 
                 _localPlayerId = PlayerId.Player1;
                 _currentTurn = PlayerId.Player1;
@@ -201,7 +201,7 @@ namespace Checkers.Netcode
 
         private void SetupGameAsHost()
         {
-            Debug.Log("[NGC] SetupGameAsHost");
+            // Debug.Log("[NGC] SetupGameAsHost");
 
             int r = gameConfig != null ? gameConfig.rows : rows;
             int c = gameConfig != null ? gameConfig.cols : cols;
@@ -227,7 +227,7 @@ namespace Checkers.Netcode
 
         private void SetupBoardAsClient()
         {
-            Debug.Log("[NGC] SetupBoardAsClient (client visual-only board)");
+            // Debug.Log("[NGC] SetupBoardAsClient (client visual-only board)");
 
             int r = gameConfig != null ? gameConfig.rows : rows;
             int c = gameConfig != null ? gameConfig.cols : cols;
@@ -257,7 +257,7 @@ namespace Checkers.Netcode
             CleanupServerSeats();
             LogSeatMap($"[NGC] Host: after cleanup, before assigning client {clientId}");
 
-            Debug.Log($"[NGC] Host: client {clientId} connected.");
+            // Debug.Log($"[NGC] Host: client {clientId} connected.");
 
             bool isSpectatorForClient = false;
             PlayerId assignedSeat = PlayerId.Player2; // default
@@ -289,13 +289,13 @@ namespace Checkers.Netcode
                 _serverSeats[clientId] = assignedSeat;
                 isSpectatorForClient = false;
 
-                Debug.Log($"[NGC] Host: assigning client {clientId} as seat {assignedSeat} (team {GetTeamForSeat(assignedSeat)}).");
+                // Debug.Log($"[NGC] Host: assigning client {clientId} as seat {assignedSeat} (team {GetTeamForSeat(assignedSeat)}).");
             }
             else
             {
                 // All active seats full => spectator
                 isSpectatorForClient = true;
-                Debug.Log($"[NGC] Host: assigning client {clientId} as Spectator (all player seats full).");
+                // Debug.Log($"[NGC] Host: assigning client {clientId} as Spectator (all player seats full).");
             }
 
             LogSeatMap($"[NGC] Host: after assigning client {clientId}");
@@ -333,13 +333,13 @@ namespace Checkers.Netcode
                     bool allSeatsFilled = seat1 && seat2 && seat3 && seat4;
                     shouldStart = allSeatsFilled;
 
-                    Debug.Log($"[NGC] Host: check 4-player start -> P1={seat1}, P2={seat2}, P3={seat3}, P4={seat4}, allFilled={allSeatsFilled}");
+                    // Debug.Log($"[NGC] Host: check 4-player start -> P1={seat1}, P2={seat2}, P3={seat3}, P4={seat4}, allFilled={allSeatsFilled}");
                 }
 
                 if (shouldStart)
                 {
                     _isGameStarted = true;
-                    Debug.Log("[NGC] Host: required players joined, game is starting.");
+                    // Debug.Log("[NGC] Host: required players joined, game is starting.");
 
                     GameStartedClientRpc();
 
@@ -348,12 +348,12 @@ namespace Checkers.Netcode
                 }
                 else
                 {
-                    Debug.Log("[NGC] Host: not enough players yet, waiting.");
+                    // Debug.Log("[NGC] Host: not enough players yet, waiting.");
                 }
             }
             else if (_isGameStarted)
             {
-                Debug.Log("[NGC] Host: late joiner detected, re-sending GameStartedClientRpc.");
+                // Debug.Log("[NGC] Host: late joiner detected, re-sending GameStartedClientRpc.");
                 GameStartedClientRpc();
             }
 
@@ -372,7 +372,7 @@ namespace Checkers.Netcode
 
                 if (_serverSeats.TryGetValue(clientId, out var seatPlayer))
                 {
-                    Debug.Log($"[NGC] Host: client {clientId} with role {seatPlayer} disconnected, freeing slot.");
+                    // Debug.Log($"[NGC] Host: client {clientId} with role {seatPlayer} disconnected, freeing slot.");
                     _serverSeats.Remove(clientId);
 
                     int countTeam1 = 0;
@@ -399,13 +399,13 @@ namespace Checkers.Netcode
                     }
                     else
                     {
-                        Debug.Log($"[NGC] Host: still have {countTeam2} Team2 humans, game continues.");
+                        // Debug.Log($"[NGC] Host: still have {countTeam2} Team2 humans, game continues.");
                     }
 
                 }
                 else
                 {
-                    Debug.Log($"[NGC] Host: spectator client {clientId} disconnected.");
+                    // Debug.Log($"[NGC] Host: spectator client {clientId} disconnected.");
                 }
 
                 return;
@@ -413,7 +413,7 @@ namespace Checkers.Netcode
 
             if (clientId == NetworkManager.Singleton.LocalClientId)
             {
-                Debug.Log("[NGC] Client: disconnected from host, shutting down and loading MainMenu.");
+                // Debug.Log("[NGC] Client: disconnected from host, shutting down and loading MainMenu.");
 
                 if (NetworkManager.Singleton.IsListening ||
                     NetworkManager.Singleton.IsServer ||
@@ -460,7 +460,7 @@ namespace Checkers.Netcode
             if (NetworkManager.Singleton.LocalClientId != targetClientId)
                 return;
 
-            Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: assigned role={role}, isSpectator={isSpectator}");
+            // Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: assigned role={role}, isSpectator={isSpectator}");
 
             _localPlayerId = role;
             _isSpectator = isSpectator;
@@ -477,7 +477,7 @@ namespace Checkers.Netcode
             if (IsServer)
                 return;
 
-            Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: GameStartedClientRpc received.");
+            // Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: GameStartedClientRpc received.");
 
             _isGameStarted = true;
 
@@ -525,19 +525,19 @@ namespace Checkers.Netcode
 
             if (!_isGameStarted)
             {
-                Debug.Log("[NGC] Click ignored: game not started yet (waiting for other player).");
+                // Debug.Log("[NGC] Click ignored: game not started yet (waiting for other player).");
                 return;
             }
 
             if (_isSpectator)
             {
-                Debug.Log("[NGC] Click ignored: you are a spectator.");
+                // Debug.Log("[NGC] Click ignored: you are a spectator.");
                 return;
             }
 
             if (_localPlayerId != _currentTurn)
             {
-                Debug.Log($"[NGC] Click ignored: local player={_localPlayerId}, but it is {_currentTurn}'s turn.");
+                // Debug.Log($"[NGC] Click ignored: local player={_localPlayerId}, but it is {_currentTurn}'s turn.");
                 return;
             }
 
@@ -558,7 +558,7 @@ namespace Checkers.Netcode
 
             if (!TryGetPlayerForClient(senderClientId, out var playerForClient))
             {
-                Debug.Log($"[NGC] Server: client {senderClientId} has no player seat (spectator?), ignoring input.");
+                // Debug.Log($"[NGC] Server: client {senderClientId} has no player seat (spectator?), ignoring input.");
                 return;
             }
 
@@ -584,14 +584,14 @@ namespace Checkers.Netcode
                 var move = _currentValidMoves.Find(m => m.To.Row == pos.Row && m.To.Col == pos.Col);
                 if (move != null)
                 {
-                    Debug.Log($"[NGC] Server: trying move from {_selectedPosition.Value.Row},{_selectedPosition.Value.Col} to {pos.Row},{pos.Col}");
+                    // Debug.Log($"[NGC] Server: trying move from {_selectedPosition.Value.Row},{_selectedPosition.Value.Col} to {pos.Row},{pos.Col}");
                     if (_gameModel.TryApplyMove(move))
                     {
                         Deselect();
                     }
                     else
                     {
-                        Debug.Log("[NGC] Server: TryApplyMove failed (invalid move).");
+                        // Debug.Log("[NGC] Server: TryApplyMove failed (invalid move).");
                         Deselect();
                     }
                 }
@@ -615,7 +615,7 @@ namespace Checkers.Netcode
         {
             if (_localPlayerId != _currentTurn)
             {
-                Debug.Log($"[NGC] Client {_localPlayerId}: click ignored, not your turn. CurrentTurn={_currentTurn}");
+                // Debug.Log($"[NGC] Client {_localPlayerId}: click ignored, not your turn. CurrentTurn={_currentTurn}");
                 return;
             }
 
@@ -628,7 +628,7 @@ namespace Checkers.Netcode
                 var localTeam = GetTeamForSeat(_localPlayerId);
                 if (!OwnsPiece(localTeam, piece))
                 {
-                    Debug.Log($"[NGC] Client {_localPlayerId}: cannot select this piece (belongs to other player or empty).");
+                    // Debug.Log($"[NGC] Client {_localPlayerId}: cannot select this piece (belongs to other player or empty).");
                     return;
                 }
 
@@ -660,8 +660,8 @@ namespace Checkers.Netcode
                 var from = _selectedPosition.Value;
                 var moveData = new MoveData(from.Row, from.Col, pos.Row, pos.Col);
 
-                Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId} sending RequestMoveServerRpc: " +
-                          $"{from.Row},{from.Col} -> {pos.Row},{pos.Col} (localPlayer={_localPlayerId}, currentTurn={_currentTurn})");
+                // Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId} sending RequestMoveServerRpc: " +
+                //           $"{from.Row},{from.Col} -> {pos.Row},{pos.Col} (localPlayer={_localPlayerId}, currentTurn={_currentTurn})");
 
                 RequestMoveServerRpc(moveData);
 
@@ -682,13 +682,13 @@ namespace Checkers.Netcode
 
             if (!TryGetPlayerForClient(senderClientId, out var playerForClient))
             {
-                Debug.Log($"[NGC] ServerRpc from client {senderClientId} ignored: no player seat (spectator?).");
+                // Debug.Log($"[NGC] ServerRpc from client {senderClientId} ignored: no player seat (spectator?).");
                 return;
             }
 
-            Debug.Log($"[NGC] ServerRpc from client {senderClientId}: " +
-                      $"{moveData.FromRow},{moveData.FromCol} -> {moveData.ToRow},{moveData.ToCol} " +
-                      $"mapped to player {playerForClient}, current player is {_gameModel.CurrentPlayer}");
+            // Debug.Log($"[NGC] ServerRpc from client {senderClientId}: " +
+            //           $"{moveData.FromRow},{moveData.FromCol} -> {moveData.ToRow},{moveData.ToCol} " +
+            //           $"mapped to player {playerForClient}, current player is {_gameModel.CurrentPlayer}");
 
             var teamForClient = GetTeamForSeat(playerForClient);
             if (teamForClient != _gameModel.CurrentPlayer)
@@ -703,11 +703,11 @@ namespace Checkers.Netcode
 
             if (_gameModel.TryApplyMove(move))
             {
-                Debug.Log("[NGC] Server: move accepted by GameModel.");
+                // Debug.Log("[NGC] Server: move accepted by GameModel.");
             }
             else
             {
-                Debug.Log("[NGC] Server: move rejected by GameModel.");
+                // Debug.Log("[NGC] Server: move rejected by GameModel.");
             }
         }
 
@@ -728,7 +728,7 @@ namespace Checkers.Netcode
             if (IsServer)
                 return;
 
-            Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: ApplySnapshotClientRpc received.");
+            // Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: ApplySnapshotClientRpc received.");
             ApplySnapshotOnClient(snapshot);
         }
 
@@ -790,9 +790,9 @@ namespace Checkers.Netcode
             snapshot.Pieces = new PieceType[total];
 
             int hash = ComputeBoardHash(snapshot.Rows, snapshot.Cols, snapshot.Pieces);
-            Debug.Log($"[NGC] Host: BuildSnapshotOnHost -> hash={hash}, " +
-                      $"ScoreP1={snapshot.ScorePlayer1}, ScoreP2={snapshot.ScorePlayer2}, " +
-                      $"CurrentPlayer={snapshot.CurrentPlayer}, IsStarted={snapshot.IsGameStarted}, IsOver={snapshot.IsGameOver}");
+            // Debug.Log($"[NGC] Host: BuildSnapshotOnHost -> hash={hash}, " +
+            //           $"ScoreP1={snapshot.ScorePlayer1}, ScoreP2={snapshot.ScorePlayer2}, " +
+            //           $"CurrentPlayer={snapshot.CurrentPlayer}, IsStarted={snapshot.IsGameStarted}, IsOver={snapshot.IsGameOver}");
 
             if (_gameModel != null)
             {
@@ -857,13 +857,13 @@ namespace Checkers.Netcode
 
             _boardView.RebuildPieces(); 
             int hash = ComputeBoardHash(snapshot.Rows, snapshot.Cols, snapshot.Pieces);
-            Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: Applied snapshot hash={hash}, " + $"CurrentPlayer={_currentTurn}, IsStarted={_isGameStarted}, IsOver={_isGameOver}");
+            // Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: Applied snapshot hash={hash}, " + $"CurrentPlayer={_currentTurn}, IsStarted={_isGameStarted}, IsOver={_isGameOver}");
             UpdateStatusText("Synced with host (snapshot applied).");
         }
 
         private void OnMoveAppliedHost(Move move)
         {
-            Debug.Log("[NGC] Host: OnMoveAppliedHost, sending snapshot to clients.");
+            // Debug.Log("[NGC] Host: OnMoveAppliedHost, sending snapshot to clients.");
 
             _boardView.RebuildPieces();
 
@@ -874,7 +874,7 @@ namespace Checkers.Netcode
         private void OnTurnChangedHost(PlayerId player)
         {
             // 'player' here is the TEAM from GameModel (Player1 or Player2)
-            Debug.Log($"[NGC] Host: OnTurnChangedHost (team) -> {player}");
+            // Debug.Log($"[NGC] Host: OnTurnChangedHost (team) -> {player}");
 
             if (_isGameOver)
                 return;
@@ -906,7 +906,7 @@ namespace Checkers.Netcode
 
         private void OnGameOverHost(PlayerId winner)
         {
-            Debug.Log($"[NGC] Host: OnGameOverHost -> {winner}");
+            // Debug.Log($"[NGC] Host: OnGameOverHost -> {winner}");
 
             _isGameOver = true;
 
@@ -925,7 +925,7 @@ namespace Checkers.Netcode
 
         private void OnBoardResetHost()
         {
-            Debug.Log("[NGC] Host: OnBoardResetHost");
+            // Debug.Log("[NGC] Host: OnBoardResetHost");
 
             _boardView.RebuildPieces();
             _isGameOver = false;
@@ -946,7 +946,7 @@ namespace Checkers.Netcode
 
         private void OnScoreChangedHost(int scoreP1, int scoreP2)
         {
-            Debug.Log($"[NGC] Host: OnScoreChangedHost -> {scoreP1} : {scoreP2}");
+            // Debug.Log($"[NGC] Host: OnScoreChangedHost -> {scoreP1} : {scoreP2}");
 
             if (scoreText != null)
                 scoreText.text = $"{scoreP1} : {scoreP2}";
@@ -957,14 +957,14 @@ namespace Checkers.Netcode
         private void BroadcastMoveToClients(Move move)
         {
             var data = new MoveData(move.From.Row, move.From.Col, move.To.Row, move.To.Col);
-            Debug.Log("[NGC] Host: BroadcastMoveToClients");
+            // Debug.Log("[NGC] Host: BroadcastMoveToClients");
             ApplyMoveClientRpc(data);
         }
 
         [ClientRpc]
         private void ApplyMoveClientRpc(MoveData moveData)
         {
-            Debug.Log($"[NGC] ApplyMoveClientRpc on client {NetworkManager.Singleton.LocalClientId}, IsServer={IsServer}");
+            // Debug.Log($"[NGC] ApplyMoveClientRpc on client {NetworkManager.Singleton.LocalClientId}, IsServer={IsServer}");
 
             if (IsServer)
                 return;
@@ -1005,7 +1005,7 @@ namespace Checkers.Netcode
         [ClientRpc]
         private void TurnChangedClientRpc(PlayerId player)
         {
-            Debug.Log($"[NGC] TurnChangedClientRpc on client {NetworkManager.Singleton.LocalClientId}, player={player}");
+            // Debug.Log($"[NGC] TurnChangedClientRpc on client {NetworkManager.Singleton.LocalClientId}, player={player}");
 
             if (IsServer)
                 return;
@@ -1019,7 +1019,7 @@ namespace Checkers.Netcode
         [ClientRpc]
         private void GameOverClientRpc(PlayerId winner)
         {
-            Debug.Log($"[NGC] GameOverClientRpc on client {NetworkManager.Singleton.LocalClientId}, winner={winner}");
+            // Debug.Log($"[NGC] GameOverClientRpc on client {NetworkManager.Singleton.LocalClientId}, winner={winner}");
 
             if (IsServer)
                 return;
@@ -1039,7 +1039,7 @@ namespace Checkers.Netcode
         [ClientRpc]
         private void ScoreChangedClientRpc(int scoreP1, int scoreP2)
         {
-            Debug.Log($"[NGC] ScoreChangedClientRpc on client {NetworkManager.Singleton.LocalClientId}, score={scoreP1}:{scoreP2}");
+            // Debug.Log($"[NGC] ScoreChangedClientRpc on client {NetworkManager.Singleton.LocalClientId}, score={scoreP1}:{scoreP2}");
 
             if (IsServer)
                 return;
@@ -1051,7 +1051,7 @@ namespace Checkers.Netcode
         [ClientRpc]
         private void BoardResetClientRpc()
         {
-            Debug.Log($"[NGC] BoardResetClientRpc on client {NetworkManager.Singleton.LocalClientId}");
+            // Debug.Log($"[NGC] BoardResetClientRpc on client {NetworkManager.Singleton.LocalClientId}");
 
             if (IsServer)
                 return;
@@ -1082,14 +1082,14 @@ namespace Checkers.Netcode
         [ServerRpc(RequireOwnership = false)]
         private void RequestReturnToMenuServerRpc(ServerRpcParams rpcParams = default)
         {
-            Debug.Log("[NGC] Client requested return to menu. Sending ClientRpc to all clients.");
+            // Debug.Log("[NGC] Client requested return to menu. Sending ClientRpc to all clients.");
             ReturnToMenuClientRpc();
         }
 
         [ClientRpc]
         private void ReturnToMenuClientRpc(ClientRpcParams clientRpcParams = default)
         {
-            Debug.Log("[NGC] ReturnToMenuClientRpc received. Shutting down Netcode and loading MainMenu.");
+            // Debug.Log("[NGC] ReturnToMenuClientRpc received. Shutting down Netcode and loading MainMenu.");
 
             if (NetworkManager.Singleton != null)
             {
@@ -1127,7 +1127,7 @@ namespace Checkers.Netcode
             {
                 if (!activeIds.Contains(kvp.Key))
                 {
-                    Debug.Log($"[NGC] CleanupServerSeats: removing stale seat for client {kvp.Key} (was {kvp.Value}).");
+                    // Debug.Log($"[NGC] CleanupServerSeats: removing stale seat for client {kvp.Key} (was {kvp.Value}).");
                     toRemove.Add(kvp.Key);
                 }
             }
@@ -1160,12 +1160,12 @@ namespace Checkers.Netcode
                 }
             }
 
-            Debug.Log(msg);
+            // Debug.Log(msg);
         }
 
         public void OnRestartButtonClicked()
         {
-            Debug.Log("[NGC] Back to main menu clicked.");
+            // Debug.Log("[NGC] Back to main menu clicked.");
 
             if (IsServer)
             {
@@ -1184,7 +1184,7 @@ namespace Checkers.Netcode
                 return;
 
             ulong sender = rpcParams.Receive.SenderClientId;
-            Debug.Log($"[NGC] Host: Restart requested by client {sender}");
+            // Debug.Log($"[NGC] Host: Restart requested by client {sender}");
 
             HostRestartGame();
         }
@@ -1194,7 +1194,7 @@ namespace Checkers.Netcode
             if (_gameModel == null)
                 return;
 
-            Debug.Log("[NGC] Host: restarting game (same scene).");
+            // Debug.Log("[NGC] Host: restarting game (same scene).");
 
             int rowsPerSide = gameConfig != null ? gameConfig.rowsPerSide : 2;
             var layout = new StandardBoardLayout(rowsPerSide: rowsPerSide);

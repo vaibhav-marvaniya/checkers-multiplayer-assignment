@@ -8,6 +8,7 @@ public class MainMenu : MonoBehaviour
 
     private void Awake()
     {
+        Application.targetFrameRate = 60;
         OfflinePlayButton.onClick.AddListener(PlayOffline);
         OnlinePlayButton.onClick.AddListener(PlayOnline);
     }

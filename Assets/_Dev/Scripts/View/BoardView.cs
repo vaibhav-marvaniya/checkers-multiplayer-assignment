@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Checkers.Model;
 using Checkers.Factory;
@@ -22,8 +22,8 @@ namespace Checkers.View
         [SerializeField]
         private Color[] tileBaseColors = new Color[]
         {
-            new Color(0.8f, 0.8f, 0.8f),  // light
-            new Color(0.3f, 0.3f, 0.3f)   // dark
+            new Color(0.8f, 0.8f, 0.8f),
+            new Color(0.3f, 0.3f, 0.3f)
         };
 
         private TileView[,] _tiles;

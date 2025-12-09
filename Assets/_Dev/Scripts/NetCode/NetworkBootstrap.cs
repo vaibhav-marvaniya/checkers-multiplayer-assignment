@@ -71,7 +71,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (nm == null)
         {
             SetStatus("No NetworkManager in scene.");
-            Debug.LogError("NetworkBootstrap: No NetworkManager.Singleton found.");
+            // Debug.LogError("NetworkBootstrap: No NetworkManager.Singleton found.");
             return;
         }
 
@@ -79,7 +79,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (transport == null)
         {
             SetStatus("No UnityTransport on NetworkManager.");
-            Debug.LogError("NetworkBootstrap: Expected UnityTransport on NetworkManager.");
+            // Debug.LogError("NetworkBootstrap: Expected UnityTransport on NetworkManager.");
             return;
         }
 
@@ -87,12 +87,12 @@ public class NetworkBootstrap : MonoBehaviour
         ushort port = transport.ConnectionData.Port;
 
         string myIp = GetLocalIPv4();
-        Debug.Log($"[HOST] Will listen on 0.0.0.0:{port}, Wi-Fi IP {myIp}");
+        // Debug.Log($"[HOST] Will listen on 0.0.0.0:{port}, Wi-Fi IP {myIp}");
         SetStatus($"Hosting at {myIp}:{port}");
 
         if (nm.StartHost())
         {
-            Debug.Log("Host started");
+            // Debug.Log("Host started");
             ShowGameplayUI();
 
             if (enableDiscovery && _hostBroadcastCoroutine == null)
@@ -100,7 +100,7 @@ public class NetworkBootstrap : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Failed to start host");
+            // Debug.LogError("Failed to start host");
             SetStatus("Failed to start host.");
         }
     }
@@ -111,7 +111,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (nm == null)
         {
             SetStatus("No NetworkManager in scene.");
-            Debug.LogError("NetworkBootstrap: No NetworkManager.Singleton found.");
+            // Debug.LogError("NetworkBootstrap: No NetworkManager.Singleton found.");
             return;
         }
 
@@ -119,7 +119,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (transport == null)
         {
             SetStatus("No UnityTransport on NetworkManager.");
-            Debug.LogError("NetworkBootstrap: Expected UnityTransport on NetworkManager.");
+            // Debug.LogError("NetworkBootstrap: Expected UnityTransport on NetworkManager.");
             return;
         }
 
@@ -127,14 +127,14 @@ public class NetworkBootstrap : MonoBehaviour
         if (string.IsNullOrEmpty(ip))
         {
             SetStatus("Enter host IP or wait for discovery.");
-            Debug.LogWarning("Client clicked without IP set.");
+            // Debug.LogWarning("Client clicked without IP set.");
             return;
         }
 
         transport.ConnectionData.Address = ip;
 
         ushort port = transport.ConnectionData.Port;
-        Debug.Log($"[CLIENT] Connecting to {ip}:{port}");
+        // Debug.Log($"[CLIENT] Connecting to {ip}:{port}");
         SetStatus($"Connecting to {ip}:{port}");
 
         if (nm.StartClient())
@@ -149,7 +149,7 @@ public class NetworkBootstrap : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Failed to start client");
+            // Debug.LogError("Failed to start client");
             SetStatus("Failed to start client.");
         }
     }
@@ -165,13 +165,13 @@ public class NetworkBootstrap : MonoBehaviour
         {
             if (!nm.IsClient)
             {
-                Debug.LogWarning("[CLIENT] No longer in client mode; aborting connect wait.");
+                // Debug.LogWarning("[CLIENT] No longer in client mode; aborting connect wait.");
                 break;
             }
 
             if (nm.IsConnectedClient)
             {
-                Debug.Log("[CLIENT] Connected to host, switching to gameplay UI.");
+                // Debug.Log("[CLIENT] Connected to host, switching to gameplay UI.");
                 SetStatus("Connected.");
                 ShowGameplayUI();
 
@@ -185,7 +185,7 @@ public class NetworkBootstrap : MonoBehaviour
             yield return null;
         }
 
-        Debug.LogWarning("[CLIENT] Failed to connect to host (timeout).");
+        // Debug.LogWarning("[CLIENT] Failed to connect to host (timeout).");
         SetStatus("Could not connect. Check Wi-Fi / IP / port.");
 
         nm.Shutdown();
@@ -214,7 +214,7 @@ public class NetworkBootstrap : MonoBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning("NetworkBootstrap: failed to bind discovery listener: " + e.Message);
+                // Debug.LogWarning("NetworkBootstrap: failed to bind discovery listener: " + e.Message);
                 yield break;
             }
 
@@ -232,7 +232,7 @@ public class NetworkBootstrap : MonoBehaviour
                     {
                         string hostIp = senderEndPoint.Address.ToString();
                         ipInputField.text = hostIp;
-                        Debug.Log("Discovered host at " + hostIp);
+                        // Debug.Log("Discovered host at " + hostIp);
                         SetStatus("Found host: " + hostIp);
                         break;
                     }
@@ -285,8 +285,8 @@ public class NetworkBootstrap : MonoBehaviour
         if (statusLabel != null)
             statusLabel.text = msg;
 
-        if (!string.IsNullOrEmpty(msg))
-            Debug.Log("[STATUS] " + msg);
+        // if (!string.IsNullOrEmpty(msg))
+        //     Debug.Log("[STATUS] " + msg);
     }
 
     private string GetLocalIPv4()
@@ -312,7 +312,7 @@ public class NetworkBootstrap : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning("GetLocalIPv4 failed: " + e.Message);
+            // Debug.LogWarning("GetLocalIPv4 failed: " + e.Message);
         }
 
         return "127.0.0.1";
@@ -328,7 +328,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (fourPlayersButton != null)
             fourPlayersButton.interactable = (SelectedPlayerCount != 4);
 
-        Debug.Log($"[Bootstrap] Selected player count: {SelectedPlayerCount}");
+        // Debug.Log($"[Bootstrap] Selected player count: {SelectedPlayerCount}");
     }
 
 }
