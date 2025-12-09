@@ -21,13 +21,16 @@ namespace Checkers.Netcode
         [SerializeField] private int rows = 6;
         [SerializeField] private int cols = 6;
 
-
         [Header("References")]
         [SerializeField] private BoardView _boardView;
         [SerializeField] private TMP_Text turnText;
         [SerializeField] private TMP_Text gameOverText;
         [SerializeField] private TMP_Text scoreText;
         [SerializeField] private TMP_Text roleText;
+
+        [Header("Multiplayer Settings")]
+        [SerializeField] private int defaultMaxPlayers = 2;
+        private int _maxActivePlayers = 2;
 
         private GameModel _gameModel;
 
@@ -45,8 +48,75 @@ namespace Checkers.Netcode
         private readonly Dictionary<ulong, PlayerId> _serverSeats = new Dictionary<ulong, PlayerId>();
 
         [SerializeField] private TMP_Text coinsText;
-        [SerializeField] private int coinsPerWin = 10;
         [SerializeField] private TMP_Text statusText;
+
+
+        private PlayerId GetTeamForSeat(PlayerId seat)
+        {
+            if (seat == PlayerId.Player1 || seat == PlayerId.Player3)
+                return PlayerId.Player1; 
+            if (seat == PlayerId.Player2 || seat == PlayerId.Player4)
+                return PlayerId.Player2;  
+
+            return PlayerId.Player1;
+        }
+
+        private PlayerId NextSeatClockwise(PlayerId seat)
+        {
+            switch (seat)
+            {
+                case PlayerId.Player1: return PlayerId.Player2;
+                case PlayerId.Player2:
+                    return (_maxActivePlayers == 2) ? PlayerId.Player1 : PlayerId.Player3;
+                case PlayerId.Player3: return PlayerId.Player4;
+                case PlayerId.Player4: return PlayerId.Player1;
+                default: return PlayerId.Player1;
+            }
+        }
+
+        private bool IsSeatOccupied(PlayerId seat)
+        {
+            foreach (var kvp in _serverSeats)
+            {
+                if (kvp.Value == seat)
+                    return true;
+            }
+            return false;
+        }
+
+        private PlayerId ResolveNextSeatForTeam(PlayerId team)
+        {
+            var startSeat = _currentTurn;
+            if (_currentTurn != PlayerId.Player1 &&
+                _currentTurn != PlayerId.Player2 &&
+                _currentTurn != PlayerId.Player3 &&
+                _currentTurn != PlayerId.Player4)
+            {
+                startSeat = PlayerId.Player1;
+            }
+
+            PlayerId candidate = startSeat;
+            for (int i = 0; i < 4; i++)
+            {
+                candidate = NextSeatClockwise(candidate);
+
+                if (GetTeamForSeat(candidate) != team)
+                    continue;
+
+                if (!IsSeatOccupied(candidate))
+                    continue;
+
+                return candidate;
+            }
+
+            foreach (var kvp in _serverSeats)
+            {
+                if (GetTeamForSeat(kvp.Value) == team)
+                    return kvp.Value;
+            }
+
+            return PlayerId.Player1;
+        }
 
         public override void OnNetworkSpawn()
         {
@@ -70,6 +140,21 @@ namespace Checkers.Netcode
 
             if (IsServer)
             {
+                // Multiplayer mode: read from NetworkBootstrap if available
+                _maxActivePlayers = defaultMaxPlayers;
+                try
+                {
+                    // In case NetworkBootstrap doesn't exist in some scenes, we guard with try
+                    _maxActivePlayers = Mathf.Clamp(NetworkBootstrap.SelectedPlayerCount, 2, 4);
+                }
+                catch
+                {
+                    // Fallback to inspector value
+                    _maxActivePlayers = Mathf.Clamp(defaultMaxPlayers, 2, 4);
+                }
+
+                Debug.Log($"[NGC] Host using maxActivePlayers = {_maxActivePlayers}");
+
                 _localPlayerId = PlayerId.Player1;
                 _currentTurn = PlayerId.Player1;
                 _isSpectator = false;
@@ -84,7 +169,7 @@ namespace Checkers.Netcode
                 SetupGameAsHost();
 
                 if (gameOverText != null)
-                    gameOverText.text = "Waiting for Player 2 to join...";
+                    gameOverText.text = "Waiting for Player 2 to join.";
 
                 UpdateRoleText();
             }
@@ -169,57 +254,102 @@ namespace Checkers.Netcode
             if (clientId == NetworkManager.Singleton.LocalClientId)
                 return;
 
+            CleanupServerSeats();
+            LogSeatMap($"[NGC] Host: after cleanup, before assigning client {clientId}");
+
             Debug.Log($"[NGC] Host: client {clientId} connected.");
 
-            int countP1 = 0;
-            int countP2 = 0;
-            foreach (var kvp in _serverSeats)
+            bool isSpectatorForClient = false;
+            PlayerId assignedSeat = PlayerId.Player2; // default
+
+            // Decide which seats are allowed for this match
+            List<PlayerId> allowedSeats = new List<PlayerId> { PlayerId.Player2 };
+            if (_maxActivePlayers >= 4)
             {
-                if (kvp.Value == PlayerId.Player1) countP1++;
-                else if (kvp.Value == PlayerId.Player2) countP2++;
+                allowedSeats.Add(PlayerId.Player3);
+                allowedSeats.Add(PlayerId.Player4);
             }
 
-            bool isSpectatorForClient;
-            PlayerId assignedPlayerId = PlayerId.Player2;
-
-            if (countP1 < 2 || countP2 < 2)
+            // Find first free allowed seat
+            PlayerId freeSeat = PlayerId.Player1;
+            bool foundSeat = false;
+            foreach (var seat in allowedSeats)
             {
-                if (countP2 == 0)
+                if (!IsSeatOccupied(seat))
                 {
-                    assignedPlayerId = PlayerId.Player2;
+                    freeSeat = seat;
+                    foundSeat = true;
+                    break;
                 }
-                else if (countP1 < 2 && countP2 >= 1)
-                {
-                    assignedPlayerId = PlayerId.Player1;
-                }
-                else if (countP2 < 2)
-                {
-                    assignedPlayerId = PlayerId.Player2;
-                }
+            }
 
-                _serverSeats[clientId] = assignedPlayerId;
+            if (foundSeat)
+            {
+                assignedSeat = freeSeat;
+                _serverSeats[clientId] = assignedSeat;
                 isSpectatorForClient = false;
 
-                Debug.Log($"[NGC] Host: assigning client {clientId} as {assignedPlayerId} " +
-                          $"(P1 count now={countP1}, P2 count now={countP2}).");
+                Debug.Log($"[NGC] Host: assigning client {clientId} as seat {assignedSeat} (team {GetTeamForSeat(assignedSeat)}).");
             }
             else
             {
+                // All active seats full => spectator
                 isSpectatorForClient = true;
-                Debug.Log($"[NGC] Host: assigning client {clientId} as Spectator (all player slots full).");
+                Debug.Log($"[NGC] Host: assigning client {clientId} as Spectator (all player seats full).");
             }
 
-            AssignRoleClientRpc(clientId, assignedPlayerId, isSpectatorForClient);
+            LogSeatMap($"[NGC] Host: after assigning client {clientId}");
+            AssignRoleClientRpc(clientId, assignedSeat, isSpectatorForClient);
 
-            if (!_isGameStarted && !isSpectatorForClient && assignedPlayerId == PlayerId.Player2)
+            // Determine if we have at least one opponent (team 2) seated -> start game if not already
+            if (!_isGameStarted && !isSpectatorForClient)
             {
-                _isGameStarted = true;
-                Debug.Log("[NGC] Host: opponent side joined, game is starting (2-player or 2v2).");
+                bool shouldStart = false;
 
-                GameStartedClientRpc();
+                if (_maxActivePlayers <= 2)   // 2-player mode
+                {
+                    // Start as soon as we have at least one Team2 seat
+                    bool hasTeam2 = false;
+                    foreach (var kvp in _serverSeats)
+                    {
+                        if (GetTeamForSeat(kvp.Value) == PlayerId.Player2)
+                        {
+                            hasTeam2 = true;
+                            break;
+                        }
+                    }
 
-                if (gameOverText != null)
-                    gameOverText.text = "";
+                    shouldStart = hasTeam2;
+                }
+                else // 4-player mode
+                {
+                    // Start only when all four seats Player1..Player4 are occupied
+                    bool seat1 = IsSeatOccupied(PlayerId.Player1);
+                    bool seat2 = IsSeatOccupied(PlayerId.Player2);
+                    bool seat3 = IsSeatOccupied(PlayerId.Player3);
+                    bool seat4 = IsSeatOccupied(PlayerId.Player4);
+
+                    // Host is always seat1, but we keep the check for safety
+                    bool allSeatsFilled = seat1 && seat2 && seat3 && seat4;
+                    shouldStart = allSeatsFilled;
+
+                    Debug.Log($"[NGC] Host: check 4-player start -> P1={seat1}, P2={seat2}, P3={seat3}, P4={seat4}, allFilled={allSeatsFilled}");
+                }
+
+                if (shouldStart)
+                {
+                    _isGameStarted = true;
+                    Debug.Log("[NGC] Host: required players joined, game is starting.");
+
+                    GameStartedClientRpc();
+
+                    if (gameOverText != null)
+                        gameOverText.text = "";
+                }
+                else
+                {
+                    Debug.Log("[NGC] Host: not enough players yet, waiting.");
+                }
             }
             else if (_isGameStarted)
             {
@@ -228,6 +358,7 @@ namespace Checkers.Netcode
             }
 
         }
+
 
         private void OnClientDisconnected(ulong clientId)
         {
@@ -244,15 +375,16 @@ namespace Checkers.Netcode
                     Debug.Log($"[NGC] Host: client {clientId} with role {seatPlayer} disconnected, freeing slot.");
                     _serverSeats.Remove(clientId);
 
-                    int countP1 = 0;
-                    int countP2 = 0;
+                    int countTeam1 = 0;
+                    int countTeam2 = 0;
                     foreach (var kvp in _serverSeats)
                     {
-                        if (kvp.Value == PlayerId.Player1) countP1++;
-                        else if (kvp.Value == PlayerId.Player2) countP2++;
+                        var team = GetTeamForSeat(kvp.Value);
+                        if (team == PlayerId.Player1) countTeam1++;
+                        else if (team == PlayerId.Player2) countTeam2++;
                     }
 
-                    if (countP2 == 0)
+                    if (countTeam2 == 0)
                     {
                         _isGameStarted = false;
                         _isGameOver = false;
@@ -260,14 +392,16 @@ namespace Checkers.Netcode
                         _currentValidMoves.Clear();
 
                         if (gameOverText != null)
-                            gameOverText.text = "Waiting for Player 2 to join...";
+                            gameOverText.text = "Waiting for Player 2 to join.";
+                        UpdateStatusText("Opponent disconnected, waiting for Player 2 to join.");
 
                         WaitingForPlayer2ClientRpc();
                     }
                     else
                     {
-                        Debug.Log($"[NGC] Host: still have {countP2} Player2 humans, game continues.");
+                        Debug.Log($"[NGC] Host: still have {countTeam2} Team2 humans, game continues.");
                     }
+
                 }
                 else
                 {
@@ -313,6 +447,7 @@ namespace Checkers.Netcode
 
             if (gameOverText != null)
                 gameOverText.text = "Waiting for Player 2 to join...";
+            UpdateStatusText("Waiting for Player 2 to join...");
         }
 
 
@@ -348,6 +483,7 @@ namespace Checkers.Netcode
 
             if (gameOverText != null)
                 gameOverText.text = "";
+            UpdateStatusText("Game started.");
         }
 
         private void UpdateRoleText()
@@ -361,13 +497,26 @@ namespace Checkers.Netcode
                 return;
             }
 
-            if (_localPlayerId == PlayerId.Player1)
-                roleText.text = "You are: Player 1";
-            else if (_localPlayerId == PlayerId.Player2)
-                roleText.text = "You are: Player 2";
-            else
-                roleText.text = "You are: Unknown";
+            switch (_localPlayerId)
+            {
+                case PlayerId.Player1:
+                    roleText.text = "You are: Player 1";
+                    break;
+                case PlayerId.Player2:
+                    roleText.text = "You are: Player 2";
+                    break;
+                case PlayerId.Player3:
+                    roleText.text = "You are: Player 3";
+                    break;
+                case PlayerId.Player4:
+                    roleText.text = "You are: Player 4";
+                    break;
+                default:
+                    roleText.text = "You are: Unknown";
+                    break;
+            }
         }
+
 
         public void HandleTileClicked(Position pos)
         {
@@ -387,7 +536,10 @@ namespace Checkers.Netcode
             }
 
             if (_localPlayerId != _currentTurn)
+            {
+                Debug.Log($"[NGC] Click ignored: local player={_localPlayerId}, but it is {_currentTurn}'s turn.");
                 return;
+            }
 
             if (IsServer)
             {
@@ -412,9 +564,10 @@ namespace Checkers.Netcode
 
             if (playerForClient != _gameModel.CurrentPlayer)
             {
-                Debug.Log($"[NGC] Server: client {senderClientId} tried to move but it is not their turn ({_gameModel.CurrentPlayer}).");
+                Debug.LogWarning( $"[NGC] Potential desync: client {senderClientId} mapped to {playerForClient}, " + $"but current turn is {_gameModel.CurrentPlayer}. Ignoring move.");
                 return;
             }
+
 
             if (!_selectedPosition.HasValue)
             {
@@ -472,7 +625,8 @@ namespace Checkers.Netcode
             if (!_selectedPosition.HasValue)
             {
                 var piece = _clientBoardState.GetPiece(pos);
-                if (!OwnsPiece(_localPlayerId, piece))
+                var localTeam = GetTeamForSeat(_localPlayerId);
+                if (!OwnsPiece(localTeam, piece))
                 {
                     Debug.Log($"[NGC] Client {_localPlayerId}: cannot select this piece (belongs to other player or empty).");
                     return;
@@ -481,6 +635,19 @@ namespace Checkers.Netcode
                 _selectedPosition = pos;
                 _boardView.ClearHighlights();
                 _boardView.SelectTile(pos);
+                _currentValidMoves.Clear();
+
+                var ruleSet = new StandardCheckersRuleSet();
+                var localTeamForRules = GetTeamForSeat(_localPlayerId);
+                _currentValidMoves.AddRange(
+                    ruleSet.GetValidMovesFrom(_clientBoardState, pos, localTeamForRules)
+                );
+
+                var moveTargets = new List<Position>();
+                foreach (var m in _currentValidMoves)
+                    moveTargets.Add(m.To);
+
+                _boardView.HighlightPositions(moveTargets);
             }
             else
             {
@@ -523,8 +690,14 @@ namespace Checkers.Netcode
                       $"{moveData.FromRow},{moveData.FromCol} -> {moveData.ToRow},{moveData.ToCol} " +
                       $"mapped to player {playerForClient}, current player is {_gameModel.CurrentPlayer}");
 
-            if (playerForClient != _gameModel.CurrentPlayer)
+            var teamForClient = GetTeamForSeat(playerForClient);
+            if (teamForClient != _gameModel.CurrentPlayer)
+            {
+                Debug.LogWarning($"[NGC] Potential desync: client {senderClientId} mapped to seat {playerForClient} (team {teamForClient}), " +
+                                 $"but current team turn is {_gameModel.CurrentPlayer}. Ignoring move.");
                 return;
+            }
+
 
             var move = moveData.ToMove();
 
@@ -608,13 +781,18 @@ namespace Checkers.Netcode
                 Cols = c,
                 ScorePlayer1 = _gameModel != null ? _gameModel.ScorePlayer1 : 0,
                 ScorePlayer2 = _gameModel != null ? _gameModel.ScorePlayer2 : 0,
-                CurrentPlayer = _gameModel != null ? _gameModel.CurrentPlayer : PlayerId.Player1,
+                CurrentPlayer = _currentTurn,
                 IsGameOver = _isGameOver,
                 IsGameStarted = _isGameStarted
             };
 
             int total = r * c;
             snapshot.Pieces = new PieceType[total];
+
+            int hash = ComputeBoardHash(snapshot.Rows, snapshot.Cols, snapshot.Pieces);
+            Debug.Log($"[NGC] Host: BuildSnapshotOnHost -> hash={hash}, " +
+                      $"ScoreP1={snapshot.ScorePlayer1}, ScoreP2={snapshot.ScorePlayer2}, " +
+                      $"CurrentPlayer={snapshot.CurrentPlayer}, IsStarted={snapshot.IsGameStarted}, IsOver={snapshot.IsGameOver}");
 
             if (_gameModel != null)
             {
@@ -664,9 +842,23 @@ namespace Checkers.Netcode
                 scoreText.text = $"{snapshot.ScorePlayer1} : {snapshot.ScorePlayer2}";
 
             if (gameOverText != null)
-                gameOverText.text = _isGameOver ? $"Winner: {_currentTurn}" : "";
+            {
+                if (_isGameOver)
+                {
+                    var winningTeam = GetTeamForSeat(_currentTurn);
+                    gameOverText.text = $"Winner: {winningTeam}";
+                }
+                else
+                {
+                    gameOverText.text = "";
+                }
+            }
 
-            _boardView.RebuildPieces();
+
+            _boardView.RebuildPieces(); 
+            int hash = ComputeBoardHash(snapshot.Rows, snapshot.Cols, snapshot.Pieces);
+            Debug.Log($"[NGC] Client {NetworkManager.Singleton.LocalClientId}: Applied snapshot hash={hash}, " + $"CurrentPlayer={_currentTurn}, IsStarted={_isGameStarted}, IsOver={_isGameOver}");
+            UpdateStatusText("Synced with host (snapshot applied).");
         }
 
         private void OnMoveAppliedHost(Move move)
@@ -681,31 +873,36 @@ namespace Checkers.Netcode
 
         private void OnTurnChangedHost(PlayerId player)
         {
-            Debug.Log($"[NGC] Host: OnTurnChangedHost -> {player}");
-
-            _currentTurn = player;
-
-            if (turnText != null)
-                turnText.text = $"Turn: {player}";
+            // 'player' here is the TEAM from GameModel (Player1 or Player2)
+            Debug.Log($"[NGC] Host: OnTurnChangedHost (team) -> {player}");
 
             if (_isGameOver)
                 return;
 
+            // Decide which *seat* should play for this team now
+            _currentTurn = ResolveNextSeatForTeam(player);
+
+            if (turnText != null)
+                turnText.text = $"Turn: {_currentTurn}";
+
+            // Check if this team has any possible move
             if (!_gameModel.PlayerHasAnyMove(player))
             {
                 _isGameOver = true;
-                var winner = (player == PlayerId.Player1) ? PlayerId.Player2 : PlayerId.Player1;
+                var winnerTeam = (player == PlayerId.Player1) ? PlayerId.Player2 : PlayerId.Player1;
 
                 if (gameOverText != null)
-                    gameOverText.text = $"Winner: {winner} (no moves for {player})";
+                    gameOverText.text = $"Winner: {winnerTeam} (no moves for {player})";
 
-                GameOverClientRpc(winner);
+                GameOverClientRpc(winnerTeam);
             }
             else
             {
-                TurnChangedClientRpc(player);
+                // Broadcast seat-turn to clients
+                TurnChangedClientRpc(_currentTurn);
             }
         }
+
 
         private void OnGameOverHost(PlayerId winner)
         {
@@ -716,9 +913,9 @@ namespace Checkers.Netcode
             if (gameOverText != null)
                 gameOverText.text = $"Winner: {winner}";
 
-            if (!_isSpectator && winner == _localPlayerId)
+            if (!_isSpectator && winner == GetTeamForSeat(_localPlayerId))
             {
-                PlayerProgress.AddCoins(coinsPerWin);
+                PlayerProgress.AddCoins(gameConfig.coins);
                 UpdateCoinsUI();
             }
 
@@ -834,7 +1031,7 @@ namespace Checkers.Netcode
 
             if (!_isSpectator && winner == _localPlayerId)
             {
-                PlayerProgress.AddCoins(coinsPerWin);
+                PlayerProgress.AddCoins(gameConfig.coins);
                 UpdateCoinsUI();
             }
         }
@@ -888,6 +1085,7 @@ namespace Checkers.Netcode
             Debug.Log("[NGC] Client requested return to menu. Sending ClientRpc to all clients.");
             ReturnToMenuClientRpc();
         }
+
         [ClientRpc]
         private void ReturnToMenuClientRpc(ClientRpcParams clientRpcParams = default)
         {
@@ -913,6 +1111,58 @@ namespace Checkers.Netcode
             SceneManager.LoadScene("MainMenu");
         }
 
+        private void CleanupServerSeats()
+        {
+            if (!IsServer || NetworkManager.Singleton == null)
+                return;
+
+            var nm = NetworkManager.Singleton;
+
+            var activeIds = new HashSet<ulong>(nm.ConnectedClientsIds);
+            activeIds.Add(nm.LocalClientId);
+
+            var toRemove = new List<ulong>();
+
+            foreach (var kvp in _serverSeats)
+            {
+                if (!activeIds.Contains(kvp.Key))
+                {
+                    Debug.Log($"[NGC] CleanupServerSeats: removing stale seat for client {kvp.Key} (was {kvp.Value}).");
+                    toRemove.Add(kvp.Key);
+                }
+            }
+
+            foreach (var id in toRemove)
+            {
+                _serverSeats.Remove(id);
+            }
+        }
+
+
+        private void LogSeatMap(string context)
+        {
+            if (!IsServer)
+                return;
+
+            string msg = context + " seat map: ";
+            if (_serverSeats.Count == 0)
+            {
+                msg += "(none)";
+            }
+            else
+            {
+                bool first = true;
+                foreach (var kvp in _serverSeats)
+                {
+                    if (!first) msg += ", ";
+                    msg += $"{kvp.Key}->{kvp.Value}";
+                    first = false;
+                }
+            }
+
+            Debug.Log(msg);
+        }
+
         public void OnRestartButtonClicked()
         {
             Debug.Log("[NGC] Back to main menu clicked.");
@@ -926,8 +1176,6 @@ namespace Checkers.Netcode
                 RequestReturnToMenuServerRpc();
             }
         }
-
-
 
         [ServerRpc(RequireOwnership = false)]
         private void RequestRestartServerRpc(ServerRpcParams rpcParams = default)
@@ -975,6 +1223,20 @@ namespace Checkers.Netcode
                 statusText.text = $"Spectating. {extra}";
             else
                 statusText.text = $"You are: {_localPlayerId} ({_currentTurn} to move). {extra}";
+        }
+        private int ComputeBoardHash(int rows, int cols, PieceType[] pieces)
+        {
+            if (pieces == null) return 0;
+
+            int hash = 17;
+            int len = rows * cols;
+
+            for (int i = 0; i < len && i < pieces.Length; i++)
+            {
+                hash = hash * 31 + (int)pieces[i];
+            }
+
+            return hash;
         }
 
     }

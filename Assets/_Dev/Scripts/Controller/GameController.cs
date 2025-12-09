@@ -32,7 +32,6 @@ namespace Checkers.Controller
         private bool _isGameOver; 
         
         [SerializeField] private TMP_Text coinsText;
-        [SerializeField] private int coinsPerWin = 10;
 
 
         private void Start()
@@ -175,7 +174,7 @@ namespace Checkers.Controller
 
             if (winner == PlayerId.Player1)
             {
-                PlayerProgress.AddCoins(coinsPerWin);
+                PlayerProgress.AddCoins(gameConfig.coins);
                 UpdateCoinsUI();
             }
         }

@@ -18,6 +18,11 @@ public class NetworkBootstrap : MonoBehaviour
     [SerializeField] private TMP_InputField ipInputField;
     [SerializeField] private TMP_Text statusLabel;
 
+    [SerializeField] private Button twoPlayersButton;
+    [SerializeField] private Button fourPlayersButton;
+    [SerializeField] private TMP_Text PlayerCountTxt;
+    public static int SelectedPlayerCount { get; private set; } = 2;
+
     [Header("LAN Discovery")]
     [SerializeField] private bool enableDiscovery = true;
     [SerializeField] private int discoveryPort = 47777;
@@ -35,6 +40,14 @@ public class NetworkBootstrap : MonoBehaviour
         if (hostButton != null) hostButton.onClick.AddListener(OnHostClicked);
         if (clientButton != null) clientButton.onClick.AddListener(OnClientClicked);
 
+        // NEW:
+        if (twoPlayersButton != null)
+            twoPlayersButton.onClick.AddListener(() => SetPlayerCount(2));
+        if (fourPlayersButton != null)
+            fourPlayersButton.onClick.AddListener(() => SetPlayerCount(4));
+
+        SetPlayerCount(2);
+
         ShowStartUI();
         SetStatus("");
 
@@ -42,10 +55,14 @@ public class NetworkBootstrap : MonoBehaviour
             _clientDiscoveryCoroutine = StartCoroutine(ClientDiscoveryRoutine());
     }
 
+
     private void OnDestroy()
     {
         if (hostButton != null) hostButton.onClick.RemoveListener(OnHostClicked);
         if (clientButton != null) clientButton.onClick.RemoveListener(OnClientClicked);
+
+        if (twoPlayersButton != null) twoPlayersButton.onClick.RemoveAllListeners();
+        if (fourPlayersButton != null) fourPlayersButton.onClick.RemoveAllListeners();
     }
 
     private void OnHostClicked()
@@ -118,7 +135,7 @@ public class NetworkBootstrap : MonoBehaviour
 
         ushort port = transport.ConnectionData.Port;
         Debug.Log($"[CLIENT] Connecting to {ip}:{port}");
-        SetStatus($"Connecting to {ip}:{port}�");
+        SetStatus($"Connecting to {ip}:{port}");
 
         if (nm.StartClient())
         {
@@ -300,4 +317,18 @@ public class NetworkBootstrap : MonoBehaviour
 
         return "127.0.0.1";
     }
+    private void SetPlayerCount(int count)
+    {
+        SelectedPlayerCount = Mathf.Clamp(count, 2, 4);
+        PlayerCountTxt.text = "Player : " +count.ToString();
+        // Optional: simple visual feedback
+        if (twoPlayersButton != null)
+            twoPlayersButton.interactable = (SelectedPlayerCount != 2);
+
+        if (fourPlayersButton != null)
+            fourPlayersButton.interactable = (SelectedPlayerCount != 4);
+
+        Debug.Log($"[Bootstrap] Selected player count: {SelectedPlayerCount}");
+    }
+
 }

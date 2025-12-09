@@ -201,9 +201,11 @@ namespace Checkers.View
 
         public void SetPerspectiveForLocalPlayer(PlayerId localPlayerId)
         {
-            bool shouldFlip = (localPlayerId == PlayerId.Player1);
+            bool isTeamA = (localPlayerId == PlayerId.Player1 || localPlayerId == PlayerId.Player3);
+            bool shouldFlip = isTeamA;
             ApplyVerticalFlip(shouldFlip);
         }
+
 
         private void ApplyVerticalFlip(bool flip)
         {
